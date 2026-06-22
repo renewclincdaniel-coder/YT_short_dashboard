@@ -29,6 +29,12 @@ from llm_agent import stream_report, generate_report, LLMAgentError
 from line_service import push_report, LineServiceError
 import db_service
 
+try:
+    from streamlit_tags import st_tags
+    _HAS_TAGS = True
+except ImportError:
+    _HAS_TAGS = False
+
 KEYWORDS_CSV = "keywords.csv"
 WEEKDAYS = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
 
@@ -381,9 +387,20 @@ def render_scraper_tab():
                 options=all_keywords,
                 default=all_keywords[: min(4, len(all_keywords))],
             )
-            extra = st.text_input("額外自訂關鍵字（請以逗號分隔）", "")
-            if extra.strip():
-                selected = selected + [k.strip() for k in extra.split(",") if k.strip()]
+            if _HAS_TAGS:
+                extra_tags = st_tags(
+                    label="額外自訂關鍵字（輸入後按 Enter 加入）",
+                    text="輸入關鍵字後按 Enter ↵",
+                    value=[],
+                    suggestions=[],
+                    maxtags=20,
+                    key="extra_kw_tags",
+                )
+                selected = selected + [t for t in extra_tags if t not in selected]
+            else:
+                extra = st.text_input("額外自訂關鍵字（請以逗號分隔）", "")
+                if extra.strip():
+                    selected = selected + [k.strip() for k in extra.split(",") if k.strip()]
         with col2:
             days = st.slider("數據回溯天數", min_value=1, max_value=90, value=14)
             max_sec = st.slider("影片時長上限（秒）", 15, 120, 120)
