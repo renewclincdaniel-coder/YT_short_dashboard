@@ -601,15 +601,43 @@ def render_automation_tab():
     kw_df = load_keywords()
     all_keywords = kw_df["keyword"].dropna().tolist() if not kw_df.empty else []
 
+    # 以上次抓取用過的關鍵字作為預設值
+    prev_df = st.session_state.get("df_results")
+    if prev_df is not None and not prev_df.empty and "keyword" in prev_df.columns:
+        prev_keywords = prev_df["keyword"].dropna().unique().tolist()
+        default_keywords = [k for k in prev_keywords if k in all_keywords]
+    else:
+        default_keywords = all_keywords[: min(4, len(all_keywords))]
+
     with st.container(border=True):
         st.markdown(
             '<h3 style="font-family: \'Inter\', sans-serif; font-size: 0.95rem; letter-spacing: 0.05em; color: #6B7280; margin-bottom: 16px;">自動化工作流設定</h3>',
             unsafe_allow_html=True
         )
         st.markdown("<p style='color: #6B7280; font-size: 0.9em; margin-bottom: 24px;'>背景自動執行：數據抓取 → AI 報告生成 → LINE 自動推播。</p>", unsafe_allow_html=True)
-        
-        auto_keywords = st.multiselect("目標監控關鍵字", options=all_keywords,
-                                       default=all_keywords[: min(4, len(all_keywords))])
+
+        auto_keywords = st.multiselect(
+            "目標監控關鍵字",
+            options=all_keywords,
+            default=default_keywords,
+        )
+
+        if _HAS_TAGS:
+            extra_auto_tags = st_tags(
+                label="額外自訂關鍵字（輸入後按 Enter 加入）",
+                text="輸入關鍵字後按 Enter ↵",
+                value=[],
+                suggestions=[],
+                maxtags=20,
+                key="auto_extra_kw_tags",
+            )
+            auto_keywords = auto_keywords + [t for t in extra_auto_tags if t not in auto_keywords]
+        else:
+            extra_auto = st.text_input("額外自訂關鍵字（請以逗號分隔）", "", key="auto_extra_kw_text")
+            if extra_auto.strip():
+                auto_keywords = auto_keywords + [k.strip() for k in extra_auto.split(",")
+                                                  if k.strip() and k.strip() not in auto_keywords]
+
         c1, c2, c3 = st.columns(3)
         with c1:
             weekday = st.selectbox("每週執行日", WEEKDAYS, index=0)
