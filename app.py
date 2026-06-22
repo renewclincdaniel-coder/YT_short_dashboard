@@ -523,12 +523,21 @@ def render_report_tab():
         st.write("")
         if st.button("生成情報分析報告", type="primary"):
             placeholder = st.empty()
+            placeholder.markdown(
+                '<div style="display:flex;align-items:center;gap:12px;padding:16px;background:#FAFAFA;border:1px solid #EBEBEB;border-radius:2px;">'
+                '<div style="width:18px;height:18px;border:2px solid #EBEBEB;border-top-color:#C5A880;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
+                '<span style="font-family:\'Inter\',sans-serif;font-size:0.9rem;color:#6B7280;">正在連線 AI 模型，分析中，請稍候⋯</span>'
+                '</div>'
+                '<style>@keyframes spin{to{transform:rotate(360deg)}}</style>',
+                unsafe_allow_html=True,
+            )
             acc = ""
             try:
                 for delta in stream_report(df, extra_instruction=extra or None):
                     acc += delta
                     placeholder.markdown(acc)
             except LLMAgentError as e:
+                placeholder.empty()
                 st.error(f"報告生成失敗：{e}")
                 return
             st.session_state["report"] = acc
@@ -536,6 +545,7 @@ def render_report_tab():
             model = os.getenv("OPENROUTER_MODEL", "unknown")
             keywords = df["keyword"].unique().tolist() if "keyword" in df.columns else []
             db_service.save_report(run_id, keywords, model, acc)
+            placeholder.empty()  # clear streaming preview; report renders in dedicated section below
 
     report = st.session_state.get("report")
     if report:
